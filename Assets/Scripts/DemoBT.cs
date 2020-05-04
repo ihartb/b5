@@ -89,11 +89,10 @@ public class DemoBT : MonoBehaviour
 
                 //Add(nums[1], nums[2]),
                 //Add3(new[] { nums[1], nums[2], nums[3] }),
-                MultiAdd(new[] { nums[1], nums[2], nums[3], nums[4] }),
+                MultiAdd(new[] { nums[1], nums[2], nums[3], nums[4], nums[5], nums[6] }),
                 PrintNumber(nums[1]),
 
-                new LeafInvoke(() => print("Please choose Menu (0) or Freeform (2)")),
-                RetrieveUserInput()
+                new LeafInvoke(() => userInput = (int)StoryArc.MENU)
             );
     }
 
@@ -107,9 +106,8 @@ public class DemoBT : MonoBehaviour
 
                 Multiply(nums[11], nums[10]),
                 PrintNumber(nums[11]),
-
-                new LeafInvoke(() => print("Please choose Menu (0) or Add (1)")),
-                RetrieveUserInput()
+                
+                new LeafInvoke(() => userInput = (int)StoryArc.MENU)
             );
     }
 
