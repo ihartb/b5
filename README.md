@@ -1,0 +1,11 @@
+TODO:
+ - [ ] Story: prison escape
+    - [ ] required to have multiple story endings
+ - [ ] complex environment: adapt from previous assignment
+ - [ ] 3 characters
+ - [ ] 2 new affordances (interaction between characters and/or objects)
+ - [ ] behavior tree using KADAPT library
+ - [ ] create specific control node and assign it a behavior
+ - [ ] interactive behavior tree for the story
+    - [ ] include drawing in report
+    - [ ] attach human player controls to one character
