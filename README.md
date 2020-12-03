@@ -8,8 +8,10 @@ TODO:
  - [ ] complex environment: adapt from previous assignment
  - [ ] 3 characters
  - [ ] 2 new affordances (interaction between characters and/or objects)
- - [ ] behavior tree using KADAPT library
+ - [x] 2 IK affordances
+ - [x] behavior tree using KADAPT library
  - [ ] create specific control node and assign it a behavior
+   - [ ] probability selector? 
  - [ ] interactive behavior tree for the story
    - [ ] include drawing in report
    - [ ] attach human player controls to one character
