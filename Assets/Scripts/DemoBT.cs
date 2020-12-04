@@ -29,15 +29,15 @@ public class DemoBT : MonoBehaviour
     
     private Node BuildTreeRoot()
     {
-        return new DecoratorLoop(
+        return
                 new Sequence(
                     new SelectorParallel(
-                        MenuArc(),
                         AddArc(),
-                        FreeformArc()
+                        FreeformArc(),
+                        MenuArc()
                     )
-                )
-            );
+                );
+            
     }
 
     #region Arc Assertions
@@ -102,11 +102,8 @@ public class DemoBT : MonoBehaviour
 
         return new Sequence(
                 CheckFreeformArc(),
-                //new LeafInvoke(() => print(currArc)),
-
                 Multiply(nums[11], nums[10]),
                 PrintNumber(nums[11]),
-                
                 new LeafInvoke(() => userInput = (int)StoryArc.MENU)
             );
     }

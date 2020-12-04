@@ -229,13 +229,14 @@
     <Compile Include="Assets\Core\Scripts\Util\ReflectionUtil.cs" />
     <Compile Include="Assets\Core\Scripts\Util\Token.cs" />
     <Compile Include="Assets\Core\Scripts\Util\Tuple.cs" />
-    <Compile Include="Assets\IKBT.cs" />
-    <Compile Include="Assets\MyBehaviorTree.cs" />
-    <Compile Include="Assets\MyBehaviorTree2.cs" />
     <Compile Include="Assets\Scripts\CleanScript.cs" />
     <Compile Include="Assets\Scripts\CoughEmitter.cs" />
     <Compile Include="Assets\Scripts\DemoBT.cs" />
+    <Compile Include="Assets\Scripts\DialogueUI.cs" />
+    <Compile Include="Assets\Scripts\IKBT.cs" />
     <Compile Include="Assets\Scripts\IKBT2.cs" />
+    <Compile Include="Assets\Scripts\MyBehaviorTree.cs" />
+    <Compile Include="Assets\Scripts\MyBehaviorTree2.cs" />
     <Compile Include="Assets\Scripts\VirusScript.cs" />
     <Reference Include="Unity.Timeline.Editor">
       <HintPath>/Users/bhartimehta/Desktop/Unity/b5/Library/ScriptAssemblies/Unity.Timeline.Editor.dll</HintPath>
