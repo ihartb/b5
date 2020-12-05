@@ -1,5 +1,7 @@
 TODO IN PRIORITY ORDER:
  - [ ] the two diverge points (check the narrative below) just dont work with user input bc selector parallel keeps giving errors!!!!
+   - i tried using the userinput like sam does in the repo from announcement, dididnt work but maybe im just dumb
+   - i tried what demoBT.cs does doesnt work...
  - [ ] camera angles
  - [ ] is random selector really a new control node?? 
  - [ ] apple IK doesn't stay in finger tips, and doesnt drop on stop interaction
