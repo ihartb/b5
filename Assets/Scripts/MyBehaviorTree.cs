@@ -21,6 +21,10 @@ public class MyBehaviorTree : MonoBehaviour
 	public Transform cafeteriaSeatWP;
 	public Transform distractJailorWP;
 	public Transform escapeRouteWP;
+	public Transform prisonerCellWP;
+	public Transform outsideCafeteriaWP;
+	public Transform fightJailorWP;
+	public Transform fightGuardWP;
 
 	//objects
 	public GameObject apple;
@@ -47,8 +51,10 @@ public class MyBehaviorTree : MonoBehaviour
 	private enum StoryArc
 	{
 		NONE = 0,
-		ESACPE,
+		ESCAPE,
 		STAY,
+		LATEESCAPE,
+		ESCAPEFAIL
 	}
 
 	// -2 not there yet in story, -1 waiting for reply, 0-n answer
@@ -60,13 +66,9 @@ public class MyBehaviorTree : MonoBehaviour
 		behaviorAgent = new BehaviorAgent (this.BuildTreeRoot ());
 		BehaviorManager.Instance.Register (behaviorAgent);
 		behaviorAgent.StartBehavior ();
-		//this doesnt work
-		//jailor = jailorObj.GetComponent<BehaviorMecanim>();
-		//prisoner = prisonerObj.GetComponent<BehaviorMecanim>();
 
 	}
 
-	// Update is called once per frame
 	// Update is called once per frame
 	void Update()
 	{
@@ -133,7 +135,6 @@ public class MyBehaviorTree : MonoBehaviour
 		);
 	}
 
-	//doesnt work here.... 
 	private Node SetDialogueText(String text)
     {
 		return (
@@ -173,7 +174,14 @@ public class MyBehaviorTree : MonoBehaviour
 							if (Input.GetKeyDown(KeyCode.Y) == true)
 							{
 								print("yes");
-								input = 1;
+								if (currArc == StoryArc.STAY)
+								{
+									input = 3;
+								}
+								else
+                                {
+									input = 1;
+								}
 							}
 							if (Input.GetKeyDown(KeyCode.N) == true)
 							{
@@ -181,10 +189,10 @@ public class MyBehaviorTree : MonoBehaviour
 								input = 2;
 							}
 						
-							if (input > 0 && input < 3)
+							if (input > 0 && input < 4)
 							{
 								userInput = input;
-								currArc = (StoryArc)input;
+								currArc = (StoryArc)userInput;
 								timeToDecide = Time.time - startTime;
 								return RunStatus.Failure;
 							}
@@ -199,25 +207,60 @@ public class MyBehaviorTree : MonoBehaviour
 			);
 	}
 
-	private Node CheckEscapeArc()
+	protected Node MaintainArcs()
 	{
-		return new Sequence(
-				new LeafAssert(() => (StoryArc)userInput == StoryArc.ESACPE),
-				new LeafInvoke(() => currArc = StoryArc.ESACPE)
-			);
+		return new DecoratorLoop(
+			
+			new LeafInvoke(() => {
+				switch (userInput)
+				{
+					case -1:
+						currArc = StoryArc.NONE;
+						break;
+					case 0:
+						currArc = StoryArc.NONE;
+						break;
+					case 1:
+						currArc = StoryArc.ESCAPE;
+						break;
+					case 2:
+						currArc = StoryArc.STAY;
+						break;
+					case 3:
+						currArc = StoryArc.LATEESCAPE;
+						break;
+					case 4:
+						currArc = StoryArc.ESCAPEFAIL;
+						break;
+				}
+			})
+		);
 	}
 
-	private Node CheckStayArc()
-	{
-
-		return new Sequence(
-				new LeafAssert(() => (StoryArc)userInput == StoryArc.STAY),
-				new LeafInvoke(() => currArc = StoryArc.STAY)
-			);
-	}
 
 	//STORY METHODS
+
+
+	protected Node BuildTreeRoot()
+	{
+		return new Sequence(
+			ST_StoryStart(),
+			ST_StoryDiverge()
+		);
+	}
+
+
 	//beginning story
+	protected Node ST_StoryStart()
+	{
+		return new Sequence(
+            JailorLetsOutPrisoner(),
+            LunchTime(),
+            GuardCallJailor(),
+            PrisonerDecides()
+		);
+	}
+
 	protected Node jailorOpensCell(bool isDoorOpen)
     {
 		Val<Vector3> position = Val.V(() => cellDoorButton.transform.position);
@@ -289,8 +332,7 @@ public class MyBehaviorTree : MonoBehaviour
 		);
 	}
 
-	//middle story
-	protected Node guardCallJailor()
+	protected Node GuardCallJailor()
 	{
 		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
 		Val<Vector3> faceGuard = Val.V(() => guard.transform.position);
@@ -299,11 +341,11 @@ public class MyBehaviorTree : MonoBehaviour
 			new Sequence(
 				new SequenceParallel (
 					guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceJailor),
-					guard.GetComponent<BehaviorMecanim>().Node_HandAnimation("CALLOVER", true),
-					SetDialogueText("Guard: Hey there Jailor! Didn't see you during your shift yesterday!")
+					guard.GetComponent<BehaviorMecanim>().Node_HandAnimation("CALLOVER", true)
 				),
 				jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceGuard),
 				new SequenceParallel(
+					SetDialogueText("Guard: Hey there Jailor! Didn't see you during your shift yesterday!"),
 					jailor.GetComponent<BehaviorMecanim>().Node_HandAnimation("WAVE", true),
 					this.ST_Approach(jailor, distractJailorWP)
 				),
@@ -330,7 +372,7 @@ public class MyBehaviorTree : MonoBehaviour
 		);
     }
 
-	protected Node prisonerDecides()
+	protected Node PrisonerDecides()
     {
 		return 
 			new Sequence(
@@ -338,117 +380,228 @@ public class MyBehaviorTree : MonoBehaviour
 				prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", true),
 				new SequenceParallel(
 					SetDialogueText("Narrator: The guards are distracted! Quick! Decide! Should the prisoner make an escape? (Press Y or N)"),
-					RetrieveUserInput()
-				)
+                    RetrieveUserInput()
+                )
 			);
     }
 
-	protected Node EscapeArc()
-    {
-		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
+	//diverge story
+	//issue node selector parallel is dumb doesnt work like i expect it to.
+	protected Node ST_StoryDiverge()
+	{
 		return
 			new Sequence(
-				CheckEscapeArc(),
-				SetDialogueText("You: chose to escape! Let's do it!"),
-				prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK)
-				//TODO
-				//add more things to do for escape...
-
-				//this.ST_StandUp(prisoner),
-				//this.ST_Approach(prisoner, cafeteriaGuardWP),
-				//new SequenceParallel(
-				//	this.ST_Approach(prisoner, outsideCellWP),
-				//	new Sequence(
-				//		new SequenceParallel(
-				//			jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
-				//			guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner)
-				//		),
-				//		new SequenceParallel(
-				//			this.ST_Approach(jailor, outsideCellWP),
-				//			this.ST_Approach(jailor, outsideCellWP)
-				//		)
-				//	)
-				//),
-				//new SequenceParallel(
-				//	prisoner.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 3000),
-				//	jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 3000),
-				//	guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 3000)
-				//)
+				new SelectorParallel(
+					ST_StayArc(),
+					ST_EscapeArc()
+				)
 			);
 	}
 
-	protected Node StayArc()
+	protected Node ST_None() {
+		return new SelectorParallel(
+			new DecoratorInvert(new DecoratorLoop(new Sequence(
+				new LeafAssert(() => currArc == StoryArc.NONE)
+			))),
+			new Sequence(
+				new DecoratorLoop(new LeafWait(1))
+			)
+		);
+
+	}
+
+	protected Node ST_EscapeArc()
+	{
+		return
+			new Sequence(
+				new LeafAssert(() => currArc == StoryArc.ESCAPE),
+				ST_EscapeArcStart(),
+				ST_EscapeArcMiddle(),
+				new DecoratorLoop(new LeafWait(1))
+			);
+	}
+
+	protected Node ST_EscapeArcStart()
 	{
 		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
 		return
 			new Sequence(
-				CheckStayArc(),
-				SetDialogueText("You: chose to stay! No hassle!"),
-				jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
-				guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+                new LeafAssert(() => currArc == StoryArc.ESCAPE),
+                new LeafInvoke(() => { print("escape"); return RunStatus.Success; }),
+				SetDialogueText("You: chose to escape! Let's do it!"),
+				prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
+				prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", false),
+				this.ST_StandUp(prisoner) 
+			);
+	}
+
+	protected Node ST_EscapeArcMiddle()
+	{
+		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
+		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
+
+		return
+			new Sequence(
+                new LeafAssert(() => currArc == StoryArc.ESCAPE || currArc == StoryArc.LATEESCAPE),
+                this.ST_Approach(prisoner, outsideCafeteriaWP),
 				new SequenceParallel(
-					jailor.GetComponent<BehaviorMecanim>().ST_PlayHandGesture(Val.V(() => "CALLOVER"), 1000),
-					this.ST_Approach(jailor, cafeteriaGuardWP),
-					SetDialogueText("Jailor: Lunch is over! Get back to your cells!"),
+					this.ST_Approach(prisoner, outsideCellWP),
 					new Sequence(
-						prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
-						this.ST_StandUp(prisoner)
+						new SequenceParallel(
+							jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+							guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner)
+						),
+						new SequenceParallel(
+							this.ST_Approach(jailor, fightJailorWP),
+							this.ST_Approach(guard, fightGuardWP)
+						)
+					)
+				),
+				new SequenceParallel(
+					jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+					guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+					prisoner.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceJailor)
+				),
+				new SequenceParallel(
+					SetDialogueText("Narrator: The prisoner must fight both the guards to escape!"),
+					prisoner.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 2000),
+					jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 2000),
+					guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 2000)
+				),
+				RandomSelector(
+                    ST_EscapeArcEndFail(),
+                    ST_EscapeArcEndSuccess()
+				)
+			);
+
+	}
+
+	protected Node ST_EscapeArcEndSuccess()
+	{
+		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
+		return
+			new Sequence(
+                new LeafAssert(() => currArc == StoryArc.ESCAPE || currArc == StoryArc.LATEESCAPE),
+                new SequenceParallel(
+					jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 1500),
+					new Sequence(
+						prisoner.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceJailor),
+						prisoner.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 1500)
+					),
+					guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 1500)
+				),
+				new SequenceParallel(
+					SetDialogueText("Narrator: The prisoner beat both the guards! Time to escape!"),
+					guard.GetComponent<BehaviorMecanim>().Node_BodyAnimation(Val.V(() => "DUCK"), true),
+					jailor.GetComponent<BehaviorMecanim>().Node_BodyAnimation(Val.V(() => "DUCK"), true),
+					this.ST_Approach(prisoner, escapeRouteWP)
+				),
+				new DecoratorLoop(
+					new SequenceParallel(
+						prisoner.GetComponent<BehaviorMecanim>().ST_PlayHandGesture(Val.V(() => "CHEER"), 500),
+						guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 500),
+						jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 500)
 					)
 				)
-			); 
-	}
-
-
-	protected Node ST_StoryMiddle()
-	{
-
-		return 
-			new Sequence(
-                guardCallJailor(),
-                prisonerDecides(),
-				new LeafWait(1000),
-				//next line is issue line, doesnt work with anything
-				//not sure which node to use here... selector/selector parallel/race gives errors..check demobt that one seems to work tho
-				//only work for the option set first...
-				new SelectorParallel( 
-					StayArc(),
-					EscapeArc()
-				)
-
-				//new DecoratorLoop ( //alternative to above....doesnt work either tho???
-				//	new DecoratorInvert(
-				//		new SelectorParallel( //not sure which node to use here... selector/selector parallel/race gives errors
-				//			StayArc(),
-				//			EscapeArc()
-				//		)
-				//	)
-
-				//)
 			);
 	}
 
-	protected Node ST_StoryStart()
+	protected Node ST_EscapeArcEndFail()
 	{
-		return new Sequence(
-            JailorLetsOutPrisoner(),
-            LunchTime()
-		);
+		Val<Vector3> faceCellButton = Val.V(() => cellDoorButton.transform.position);
+		return
+			new Sequence(
+                new LeafAssert(() => currArc == StoryArc.ESCAPE || currArc == StoryArc.LATEESCAPE),
+                new SequenceParallel(
+					prisoner.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 1500),
+					jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceCellButton),
+					guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 1500)
+				),
+				SetDialogueText("Narrator: Oh no! The prisoner could not fight both the guards!"),
+				prisoner.GetComponent<BehaviorMecanim>().Node_BodyAnimation(Val.V(() => "DUCK"), false),
+				new LeafInvoke(() => { userInput = 4; currArc = StoryArc.ESCAPEFAIL; return RunStatus.Success; }),
+				ST_StayArcEndEscapeArcFail()
+			) ;
+
 	}
 
-	protected Node ST_StoryEnd()
+
+	protected Node ST_StayArc()
 	{
-		//escape arc..
-			//not sure
-		//stay arc
-			//take back to cell from current location
-		return null;
+		return
+				new Sequence(
+					new LeafAssert(() => currArc == StoryArc.ESCAPE),
+					ST_StayArcStart(),
+					ST_StayArcDecideAgain(),
+					ST_StayArcDiverge(),
+					new DecoratorLoop(new LeafWait(1))
+				);
 	}
 
-	protected Node BuildTreeRoot()
+	protected Node ST_StayArcStart()
 	{
-		return new Sequence(
-			ST_StoryStart(),
-			ST_StoryMiddle()
-		);
+		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
+		return
+			new Sequence(
+                new LeafAssert(() => currArc == StoryArc.STAY),
+                new LeafInvoke(() => { print("StaY"); return RunStatus.Success; }),
+                SetDialogueText("You: chose to stay! No hassle!"),
+                new LeafWait(2000),
+                jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+                guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+                new SequenceParallel(
+                    jailor.GetComponent<BehaviorMecanim>().ST_PlayHandGesture(Val.V(() => "CALLOVER"), 1000),
+                    this.ST_Approach(jailor, cafeteriaGuardWP),
+                    SetDialogueText("Jailor: Lunch is over! Get back to your cells!"),
+                    new Sequence(
+                        prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
+						prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", false),
+						this.ST_StandUp(prisoner)
+                    )
+                )
+            );
+	}
+
+	protected Node ST_StayArcDecideAgain()
+	{
+		return new SequenceParallel(
+			SetDialogueText("Narrator: You might still have a chance to escape! Do you want to try to escape? (Press Y or N)"),
+            RetrieveUserInput()
+        );
+	}
+
+
+	//issue node --> selector parallel does not work like i expect it to.
+	protected Node ST_StayArcDiverge()
+	{
+		return new SelectorParallel(
+					ST_EscapeArcMiddle(),
+					ST_StayArcEndEscapeArcFail()
+			);
+	}
+
+	protected Node ST_StayArcEndEscapeArcFail()
+	{
+		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
+		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
+		Val<Vector3> faceGuard = Val.V(() => guard.transform.position);
+
+		return
+			new Sequence(
+				new LeafInvoke(() => { print("ST_StayArcEndEscapeArcFail"); return RunStatus.Success; }),
+				new LeafAssert(() => currArc == StoryArc.STAY || currArc == StoryArc.ESCAPEFAIL),
+				new SequenceParallel(
+					this.ST_Approach(jailor, cellDoorButtonWP),
+					this.ST_Approach(prisoner, outsideCellWP)
+				),
+				this.jailorOpensCell(false),
+				this.ST_Approach(prisoner, prisonerCellWP),
+				this.jailorOpensCell(true),
+				jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceGuard),
+				guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceJailor),
+				new DecoratorLoop(
+					gaurdJailorConverse()
+				)
+			);
 	}
 }
