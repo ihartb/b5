@@ -49,11 +49,11 @@ namespace TreeSharpPlus
 			this.Selection.ClearLastStatus();
 			this.Selection = null;
 
-			// if (result == RunStatus.Failure)
-			// {
-			// 	yield return RunStatus.Failure;
-			// 	yield break;
-			// }
+			if (result == RunStatus.Failure)
+			{
+				yield return RunStatus.Failure;
+				yield break;
+			}
 
             yield return RunStatus.Success;
             yield break;

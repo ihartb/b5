@@ -43,6 +43,12 @@ public class MyBehaviorTree : MonoBehaviour
 	//UI
 	public Text dialogue;
 
+	// character control
+    public GameObject target;
+    public bool canMove = true;
+    private bool targetSelected = true;
+	private bool nodeIsRunning = true;
+
 	private BehaviorAgent behaviorAgent;
 	private int userInput = 0;
 	public enum StoryArc
@@ -67,12 +73,24 @@ public class MyBehaviorTree : MonoBehaviour
 		behaviorAgent = new BehaviorAgent (this.BuildTreeRoot ());
 		BehaviorManager.Instance.Register (behaviorAgent);
 		behaviorAgent.StartBehavior ();
+		target.transform.position = prisonerCellWP.position;
 
 	}
 
 	// Update is called once per frame
 	void Update()
 	{
+		if (Input.GetMouseButtonDown(1))
+        {
+            //select target
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray.origin, ray.direction, out hit))
+            {
+                target.transform.position = hit.point;
+            }
+            targetSelected = true;
+        }
 	}
 
 	//control node
@@ -252,12 +270,21 @@ public class MyBehaviorTree : MonoBehaviour
 		// 	ST_StoryDiverge()
 		// );
 		return new Sequence(
-			JailorLetsOutPrisoner(),
-			LunchTime(),
+			new SequenceParallel(
+				JailorLetsOutPrisoner(),
+				CharacterControl()
+			),
+			new SequenceParallel(
+				LunchTime(),
+				CharacterControl()
+			),
 			GuardCallJailor(),
 			PrisonerDecides(),
 			// new DecoratorForceStatus ( RunStatus.Success, ST_StayArc() ),
-			ST_StayArc(),
+			new SequenceParallel(
+				ST_StayArc(),
+				CharacterControl()
+			),
 			new LeafInvoke(() =>
 			{
 				print("finished ST_StayArc");
@@ -268,18 +295,6 @@ public class MyBehaviorTree : MonoBehaviour
 				print("finished ST_EscapeArc, waiting indefinitely");
 			}),
 			new DecoratorLoop(new LeafWait(1))
-		);
-	}
-
-
-	//beginning story
-	protected Node ST_StoryStart()
-	{
-		return new Sequence(
-            JailorLetsOutPrisoner(),
-            LunchTime(),
-            GuardCallJailor(),
-            PrisonerDecides()
 		);
 	}
 
@@ -311,45 +326,76 @@ public class MyBehaviorTree : MonoBehaviour
 		);
     }
 
+	protected Node CharacterControl()
+	{
+		Func<bool> condition = () => (nodeIsRunning && targetSelected);
+		Val<Vector3> target_pose = Val.V(() => target.transform.position);
+		return new Sequence(
+			new DecoratorInvert(
+				new DecoratorLoop(
+					new BoolSelector(condition,
+						// this.ST_Approach(prisoner, target_pose),
+						prisoner.GetComponent<BehaviorMecanim>().Node_GoTo(target_pose),
+						// new DecoratorInvert(
+						new LeafInvoke(() =>
+						{
+							print("test");
+							return RunStatus.Failure;
+						})
+					)
+				)
+			),
+			new LeafInvoke(() =>
+			{
+				print("done with character control");
+			})
+		);
+	}
+
 	protected Node JailorLetsOutPrisoner()
     {
 		Val<Vector3> position1 = Val.V(() => prisoner.transform.position);
 		Val<Vector3> position2 = Val.V(() => cellDoorButton.transform.position);
-
-		return (
-			new Sequence(
+		return new Sequence(
+				new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;}),
 				jailorOpensCell(false),
 				new SequenceParallel(
 					new Sequence(
 						new LeafWait(1500),
 						jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(position1),
-						this.ST_Approach(prisoner, outsideCellWP),
-						jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(position2),
-						jailorOpensCell(true)
+						new LeafWait(1500),
+						// this.ST_Approach(prisoner, outsideCellWP),
+						jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(position2)
+						// jailorOpensCell(true)
 					),
                     SetDialogueText("Jailor: Lunch time Prisoner! C'mon out!")
-                )
-            )
-		) ;
+                ),
+				new LeafInvoke ( () =>  {nodeIsRunning = false; return RunStatus.Success;})
+        );
     }
 
 	protected Node LunchTime()
     {
 		Val<Vector3> position = Val.V(() => prisoner.transform.position);
 		Val<Vector3> position2 = Val.V(() => apple.transform.position);
+		Func<bool> condition = () => (Vector3.Distance(prisoner.transform.position, cafeteriaSeatWP.position) < 5f);
 
-		return (
-			new SequenceParallel(
-				new Sequence(
-					this.ST_Approach(jailor, cafeteriaGuardWP),
-					jailor.GetComponent<BehaviorMecanim>().ST_TurnToFace(position)
+		return new Sequence(
+				new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;}),
+				new SequenceParallel(
+					new Sequence(
+						this.ST_Approach(jailor, cafeteriaGuardWP),
+						jailor.GetComponent<BehaviorMecanim>().ST_TurnToFace(position)
+					),
+					new Sequence(
+						new LeafWait(1000), // loop until condition met
+						new LeafInvoke ( () =>  {nodeIsRunning = false; print("auto control"); return RunStatus.Success;}),
+						this.ST_Approach(prisoner, cafeteriaSeatWP),
+						prisoner.GetComponent<BehaviorMecanim>().Node_OrientTowards(position2),
+						this.ST_SitDown(prisoner)
+					)
 				),
-				new Sequence(
-					this.ST_Approach(prisoner, cafeteriaSeatWP),
-					prisoner.GetComponent<BehaviorMecanim>().Node_OrientTowards(position2),
-					this.ST_SitDown(prisoner)
-				)
-			)
+				new LeafInvoke ( () =>  {nodeIsRunning = false; return RunStatus.Success;})
 		);
 	}
 
@@ -411,35 +457,6 @@ public class MyBehaviorTree : MonoBehaviour
 			);
     }
 
-	//diverge story
-	//issue node selector parallel is dumb doesnt work like i expect it to.
-	// protected Node ST_StoryDiverge()
-	// {
-	// 	return new Sequence(
-	// 		new DecoratorForceStatus ( RunStatus.Success,
-	// 			new SelectorParallel(
-	// 				ST_StayArc(), ST_EscapeArc()
-	// 			)
-	// 		),
-	// 		new LeafInvoke(() =>
-	// 		{
-	// 			print("reached end of ST_StoryDiverge");
-	// 		})
-	// 	);
-	// }
-
-	// protected Node ST_None() {
-	// 	return new SelectorParallel(
-	// 		new DecoratorInvert(new DecoratorLoop(new Sequence(
-	// 			new LeafAssert(() => currArc == StoryArc.NONE)
-	// 		))),
-	// 		new Sequence(
-	// 			new DecoratorLoop(new LeafWait(1))
-	// 		)
-	// 	);
-	//
-	// }
-
 	protected Node ST_EscapeArc()
 	{
 		// Func<bool> condition = () => (currArc == StoryArc.ESCAPE);
@@ -495,7 +512,8 @@ public class MyBehaviorTree : MonoBehaviour
 				SetDialogueText("You: chose to escape! Let's do it!"),
 				prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
 				prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", false),
-				this.ST_StandUp(prisoner)
+				this.ST_StandUp(prisoner),
+				new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;})
 			);
 	}
 
@@ -503,24 +521,28 @@ public class MyBehaviorTree : MonoBehaviour
 	{
 		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
 		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
-
+		Func<bool> condition = () => (Vector3.Distance(prisoner.transform.position, outsideCellWP.position) < 5f);
 		return
 			new Sequence(
                 new LeafAssert(() => currArc == StoryArc.ESCAPE || currArc == StoryArc.LATEESCAPE),
-                this.ST_Approach(prisoner, outsideCafeteriaWP),
+                // this.ST_Approach(prisoner, outsideCafeteriaWP),
 				new SequenceParallel(
-					this.ST_Approach(prisoner, outsideCellWP),
+					SetDialogueText("Narrator: Pretend to go to the jail button and then fight the guards."),
 					new Sequence(
-						new SequenceParallel(
-							jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
-							guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner)
-						),
-						new SequenceParallel(
-							this.ST_Approach(jailor, fightJailorWP),
-							this.ST_Approach(guard, fightGuardWP)
-						)
+						new LeafWait(1000),
+						new LeafInvoke ( () =>  {nodeIsRunning = false; return RunStatus.Success;})
 					)
 				),
+				new SequenceParallel(
+					this.ST_Approach(jailor, fightJailorWP),
+					this.ST_Approach(guard, fightGuardWP)
+				),
+				new SequenceParallel(
+					this.ST_Approach(prisoner, outsideCellWP),
+					jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
+					guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner)
+				),
+
 				new SequenceParallel(
 					jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
 					guard.GetComponent<BehaviorMecanim>().Node_OrientTowards(facePrisoner),
@@ -532,6 +554,10 @@ public class MyBehaviorTree : MonoBehaviour
 					jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 2000),
 					guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 2000)
 				),
+				new LeafInvoke(() =>
+				{
+					print(" RandomSelector b");
+				}),
 				new RandomSelector(
                     ST_EscapeArcEndFail(),
                     ST_EscapeArcEndSuccess()
@@ -545,7 +571,11 @@ public class MyBehaviorTree : MonoBehaviour
 		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
 		return
 			new Sequence(
-                new LeafAssert(() => currArc == StoryArc.ESCAPE || currArc == StoryArc.LATEESCAPE),
+				new LeafInvoke(() =>
+				{
+					print(" start fight success");
+				}),
+                // new LeafAssert(() => currArc == StoryArc.ESCAPE || currArc == StoryArc.LATEESCAPE),
                 new SequenceParallel(
 					jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 1500),
 					new Sequence(
@@ -554,14 +584,28 @@ public class MyBehaviorTree : MonoBehaviour
 					),
 					guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "FIGHT"), 1500)
 				),
+				new LeafInvoke(() =>
+				{
+					print(" start fight success1");
+				}),
 				new SequenceParallel(
 					SetDialogueText("Narrator: The prisoner beat both the guards! Time to escape!"),
 					guard.GetComponent<BehaviorMecanim>().Node_BodyAnimation(Val.V(() => "DUCK"), true),
-					jailor.GetComponent<BehaviorMecanim>().Node_BodyAnimation(Val.V(() => "DUCK"), true),
-					this.ST_Approach(prisoner, escapeRouteWP)
+					jailor.GetComponent<BehaviorMecanim>().Node_BodyAnimation(Val.V(() => "DUCK"), true)
 				),
+				new LeafInvoke(() =>
+				{
+					print(" start fight success1.1");
+				}),
+				// new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;}),
+				this.ST_Approach(prisoner, escapeRouteWP),
+				new LeafInvoke(() =>
+				{
+					print(" start fight success2");
+				}),
 				new DecoratorLoop(
 					new SequenceParallel(
+						// CharacterControl(),
 						prisoner.GetComponent<BehaviorMecanim>().ST_PlayHandGesture(Val.V(() => "CHEER"), 500),
 						guard.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 500),
 						jailor.GetComponent<BehaviorMecanim>().ST_PlayBodyGesture(Val.V(() => "DUCK"), 500)
@@ -636,7 +680,8 @@ public class MyBehaviorTree : MonoBehaviour
 						prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", false),
 						this.ST_StandUp(prisoner)
                     )
-                )
+                ),
+				new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;})
             );
 	}
 
@@ -673,16 +718,22 @@ public class MyBehaviorTree : MonoBehaviour
 		Val<Vector3> facePrisoner = Val.V(() => prisoner.transform.position);
 		Val<Vector3> faceJailor = Val.V(() => jailor.transform.position);
 		Val<Vector3> faceGuard = Val.V(() => guard.transform.position);
-
+		Func<bool> condition = () => (Vector3.Distance(prisoner.transform.position, outsideCellWP.position) < 5f);
 		return
 			new Sequence(
 				new LeafInvoke(() => { print("ST_StayArcEndEscapeArcFail: " + currArc.ToString()); return RunStatus.Success; }),
 				new LeafAssert(() => currArc == StoryArc.STAY || currArc == StoryArc.ESCAPEFAIL),
 				new SequenceParallel(
+					SetDialogueText("Narrator: Go to the jail button."),
 					this.ST_Approach(jailor, cellDoorButtonWP),
-					this.ST_Approach(prisoner, outsideCellWP)
+					new Sequence(
+						new LeafWait(1000),
+						new LeafInvoke ( () =>  {nodeIsRunning = false; return RunStatus.Success;}),
+						this.ST_Approach(prisoner, outsideCellWP)
+					)
 				),
-				this.jailorOpensCell(false),
+
+				// this.jailorOpensCell(false),
 				this.ST_Approach(prisoner, prisonerCellWP),
 				this.jailorOpensCell(true),
 				jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceGuard),

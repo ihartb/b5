@@ -2,11 +2,11 @@ TODO IN PRIORITY ORDER:
  - [x] the two diverge points (check the narrative below) just dont work with user input bc selector parallel keeps giving errors!!!!
    - i tried using the userinput like sam does in the repo from announcement, dididnt work but maybe im just dumb
    - i tried what demoBT.cs does doesnt work...
- - [ ] camera angles
+ - [x] camera angles
  - [x] is random selector really a new control node??
  - [ ] apple IK doesn't stay in finger tips, and doesnt drop on stop interaction
  - [ ] make fight sequence better?
- - [ ] escape arc could be better maybe idk
+ - [x] escape arc could be better maybe idk
 
  - [x] Story: prison escape; each of the individual story points coded.
    - Story itself has start and diverge point
@@ -30,13 +30,12 @@ TODO IN PRIORITY ORDER:
  - [x] 2 new affordances (interaction between characters and/or objects)
  - [x] 2 IK affordances
  - [x] behavior tree using KADAPT library
- - [-] create specific control node and assign it a behavior
+ - [x] create specific control node and assign it a behavior
    -[x] randomly select one from list, might be like selectorshuffle tho, idk i cant think of another type
  - [x] interactive behavior tree for the story
    - two points in the narrative we get this issue, does not work with selector parallel as it should, check script demobt for example which does work...yet ours doesnt??? idk
    - [ ] include drawing in report
    - [x] attach human player controls to one character
- - [ ] see through prison door texture
 
 TIPS:
 - find all possible actions / gestures that can be performed here:

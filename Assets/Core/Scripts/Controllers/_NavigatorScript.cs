@@ -3,7 +3,7 @@ using TreeSharpPlus;
 using System.Collections;
 
 public class _NavigatorScript : MonoBehaviour
-{	
+{
 	private UnityEngine.AI.NavMeshAgent agent;
 	private Animator animator;
 	private float angleDiff;
@@ -17,7 +17,7 @@ public class _NavigatorScript : MonoBehaviour
 
 	void Start() { this.Initialize(); }
 
-	public void Initialize() 
+	public void Initialize()
 	{
 		agent = this.GetComponent<UnityEngine.AI.NavMeshAgent> ();
 		animator = this.GetComponent<Animator> ();
@@ -40,11 +40,11 @@ public class _NavigatorScript : MonoBehaviour
 		else
 		{
 			float speed = agent.desiredVelocity.magnitude;
-			
+
 			Vector3 velocity = Quaternion.Inverse(transform.rotation) * agent.desiredVelocity;
-			
+
 			float angle = Mathf.Atan2(velocity.x, velocity.z) * 180.0f / 3.14159f;
-			
+
 			locomotion.Do(speed, angle);
 		}
 	}
@@ -67,16 +67,16 @@ public class _NavigatorScript : MonoBehaviour
 	{
 		return !agent.pathPending && AgentStopping();
 	}
-	
+
 	protected bool AgentStopping()
 	{
 		return agent.remainingDistance <= agent.stoppingDistance;
 	}
 
 	// Update is called once per frame
-	void Update () 
+	void Update ()
 	{
 		SetupAgentLocomotion();
 	}
-	
+
 }
