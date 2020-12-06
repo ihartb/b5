@@ -10,7 +10,7 @@ public class BestCameraController : MonoBehaviour
     [Range(.1f, 5f)]
     public float rotation;
 
-    private Vector2 currentRotation = new Vector2(0f,50f); 
+    private Vector2 currentRotation = new Vector2(0f,50f);
 
     public float GetRotation()
     {
@@ -19,7 +19,7 @@ public class BestCameraController : MonoBehaviour
 
     void Start()
     {
-        Cursor.SetCursor(null, new Vector2(0, 0), CursorMode.Auto);
+        // Cursor.SetCursor(null, new Vector2(0, 0), CursorMode.Auto);
         transform.rotation = Quaternion.Euler(60, 0, 00);
     }
 
