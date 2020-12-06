@@ -36,7 +36,9 @@ public class MyBehaviorTree : MonoBehaviour
 	public InteractionObject cellButtonIK;
 	public InteractionObject appleIK;
 	public InteractionObject shakePoint;
+	public GameObject shakePoint_obj;
 	public InteractionObject shakePoint2;
+	public GameObject shakePoint2_obj;
 	public FullBodyBipedEffector rightHandIK;
 	public FullBodyBipedEffector rightHandIK2;
 
@@ -155,6 +157,10 @@ public class MyBehaviorTree : MonoBehaviour
 				new SequenceParallel(
 					participant.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
 					participant2.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK2)
+				),
+				new SequenceParallel(
+					new LeafInvoke(() => { shakePoint_obj.SetActive(false); }),
+					new LeafInvoke(() => { shakePoint2_obj.SetActive(false); })
 				)
 			)
 		);
@@ -513,8 +519,9 @@ public class MyBehaviorTree : MonoBehaviour
 					print(" ST_EscapeArcStart 2");
 				}),
 				SetDialogueText("You: chose to escape! Let's do it!"),
-				prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
 				prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", false),
+				prisoner.GetComponent<BehaviorMecanim>().Node_StopInteraction(rightHandIK),
+				new LeafInvoke(() => { apple.SetActive(false); }),
 				this.ST_StandUp(prisoner),
 				new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;})
 			);
@@ -683,14 +690,15 @@ public class MyBehaviorTree : MonoBehaviour
 						prisoner.GetComponent<BehaviorMecanim>().Node_FaceAnimation("EAT", false),
 						this.ST_StandUp(prisoner)
                     )
+						// Destroy(apple);
                 ),
+				new LeafInvoke(() => { apple.SetActive(false); }),
 				new LeafInvoke ( () =>  {nodeIsRunning = true; return RunStatus.Success;})
             );
 	}
 
 	protected Node ST_StayArcDecideAgain()
 	{
-		// Destroy(apple);
 		return new SequenceParallel(
 			SetDialogueText("Narrator: You might still have a chance to escape! Do you want to try to escape? (Press Y or N)"),
             RetrieveUserInput()

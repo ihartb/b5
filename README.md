@@ -5,7 +5,6 @@ TODO IN PRIORITY ORDER:
  - [x] camera angles
  - [x] is random selector really a new control node??
  - [ ] apple IK doesn't stay in finger tips, and doesnt drop on stop interaction
- - [ ] make fight sequence better?
  - [x] escape arc could be better maybe idk
 
  - [x] Story: prison escape; each of the individual story points coded.
