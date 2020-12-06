@@ -221,6 +221,7 @@
      <Compile Include="Assets\Core\Scripts\Util\ReflectionUtil.cs" />
      <Compile Include="Assets\Core\Scripts\Util\Token.cs" />
      <Compile Include="Assets\Core\Scripts\Util\Tuple.cs" />
+     <Compile Include="Assets\Scripts\BestCameraController.cs" />
      <Compile Include="Assets\Scripts\BoolSelector.cs" />
      <Compile Include="Assets\Scripts\CleanScript.cs" />
      <Compile Include="Assets\Scripts\CoughEmitter.cs" />
