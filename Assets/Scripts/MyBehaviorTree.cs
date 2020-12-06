@@ -412,11 +412,14 @@ public class MyBehaviorTree : MonoBehaviour
 				),
 				jailor.GetComponent<BehaviorMecanim>().Node_OrientTowards(faceGuard),
 				new SequenceParallel(
-					SetDialogueText("Guard: Hey there Jailor! Didn't see you during your shift yesterday!"),
+					SetDialogueText("Guard: Hey there Jailor! Did you see the construction out front?"),
 					jailor.GetComponent<BehaviorMecanim>().Node_HandAnimation("WAVE", true),
 					this.ST_Approach(jailor, distractJailorWP)
 				),
-				this.ST_ShakeHands(jailor, guard)
+				new SequenceParallel(
+					SetDialogueText("Jailor: Yeah, any inmate could just walk out... if we weren't here!"),
+					this.ST_ShakeHands(jailor, guard)
+				)
 			);
 	}
 

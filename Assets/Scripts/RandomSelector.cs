@@ -25,7 +25,7 @@ namespace TreeSharpPlus
         public override IEnumerable<RunStatus> Execute()
         {
             int i = UnityEngine.Random.Range(0, this.Children.Count);
-			Node node = Children[1];
+			Node node = Children[i];
 			this.Selection = node;
 			node.Start();
 
